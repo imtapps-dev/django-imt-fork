@@ -74,7 +74,7 @@ for dirpath, dirnames, filenames in os.walk(django_dir):
 
 
 # Dynamically calculate the version based on django.VERSION.
-version = '1.5.5.IMT' #__import__('django').get_version()
+version = '1.5.5.1.IMT' #__import__('django').get_version()
 
 
 setup(
