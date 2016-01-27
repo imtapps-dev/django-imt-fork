@@ -9,18 +9,18 @@ from optparse import make_option
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
 from django import db
-from django.test import runner, TransactionTestCase, skipUnlessDBFeature
-from django.test.simple import DjangoTestSuiteRunner, get_tests
+from django.test import runner, TestCase, TransactionTestCase, skipUnlessDBFeature
 from django.test.testcases import connections_support_transactions
+# from django.test.utils import IgnorePendingDeprecationWarningsMixin
 from django.utils import unittest
 from django.utils.importlib import import_module
 
-from ..admin_scripts.tests import AdminScriptTestCase
+# from admin_scripts.tests import AdminScriptTestCase
 from .models import Person
 
 
-TEST_APP_OK = 'regressiontests.test_runner.valid_app.models'
-TEST_APP_ERROR = 'regressiontests.test_runner_invalid_app.models'
+TEST_APP_OK = 'test_runner.valid_app.models'
+TEST_APP_ERROR = 'test_runner_invalid_app.models'
 
 
 class DependencyOrderingTests(unittest.TestCase):
@@ -146,14 +146,14 @@ class ManageCommandTests(unittest.TestCase):
 
     def test_custom_test_runner(self):
         call_command('test', 'sites',
-                     testrunner='regressiontests.test_runner.tests.MockTestRunner')
+                     testrunner='test_runner.tests.MockTestRunner')
         self.assertTrue(MockTestRunner.invoked,
                         "The custom test runner has not been invoked")
 
     def test_bad_test_runner(self):
         with self.assertRaises(AttributeError):
             call_command('test', 'sites',
-                testrunner='regressiontests.test_runner.NonExistentRunner')
+                testrunner='test_runner.NonExistentRunner')
 
 
 class CustomOptionsTestRunner(runner.DiscoverRunner):
@@ -174,73 +174,78 @@ class CustomOptionsTestRunner(runner.DiscoverRunner):
         print("%s:%s:%s" % (self.option_a, self.option_b, self.option_c))
 
 
-class CustomTestRunnerOptionsTests(AdminScriptTestCase):
+# class CustomTestRunnerOptionsTests(AdminScriptTestCase):
 
-    def setUp(self):
-        settings = {
-            'TEST_RUNNER': '\'regressiontests.test_runner.tests.CustomOptionsTestRunner\'',
-        }
-        self.write_settings('settings.py', sdict=settings)
+#     def setUp(self):
+#         settings = {
+#             'TEST_RUNNER': '\'test_runner.tests.CustomOptionsTestRunner\'',
+#         }
+#         self.write_settings('settings.py', sdict=settings)
 
-    def tearDown(self):
-        self.remove_settings('settings.py')
+#     def tearDown(self):
+#         self.remove_settings('settings.py')
 
-    def test_default_options(self):
-        args = ['test', '--settings=regressiontests.settings']
-        out, err = self.run_django_admin(args)
-        self.assertNoOutput(err)
-        self.assertOutput(out, '1:2:3')
+#     def test_default_options(self):
+#         args = ['test', '--settings=test_project.settings']
+#         out, err = self.run_django_admin(args)
+#         self.assertNoOutput(err)
+#         self.assertOutput(out, '1:2:3')
 
-    def test_default_and_given_options(self):
-        args = ['test', '--settings=regressiontests.settings', '--option_b=foo']
-        out, err = self.run_django_admin(args)
-        self.assertNoOutput(err)
-        self.assertOutput(out, '1:foo:3')
+#     def test_default_and_given_options(self):
+#         args = ['test', '--settings=test_project.settings', '--option_b=foo']
+#         out, err = self.run_django_admin(args)
+#         self.assertNoOutput(err)
+#         self.assertOutput(out, '1:foo:3')
 
-    def test_option_name_and_value_separated(self):
-        args = ['test', '--settings=regressiontests.settings', '--option_b', 'foo']
-        out, err = self.run_django_admin(args)
-        self.assertNoOutput(err)
-        self.assertOutput(out, '1:foo:3')
+#     def test_option_name_and_value_separated(self):
+#         args = ['test', '--settings=test_project.settings', '--option_b', 'foo']
+#         out, err = self.run_django_admin(args)
+#         self.assertNoOutput(err)
+#         self.assertOutput(out, '1:foo:3')
 
-    def test_all_options_given(self):
-        args = ['test', '--settings=regressiontests.settings', '--option_a=bar', '--option_b=foo', '--option_c=31337']
-        out, err = self.run_django_admin(args)
-        self.assertNoOutput(err)
-        self.assertOutput(out, 'bar:foo:31337')
-
-
-class Ticket17477RegressionTests(AdminScriptTestCase):
-    def setUp(self):
-        self.write_settings('settings.py')
-
-    def tearDown(self):
-        self.remove_settings('settings.py')
-
-    def test_ticket_17477(self):
-        """'manage.py help test' works after r16352."""
-        args = ['help', 'test']
-        out, err = self.run_manage(args)
-        self.assertNoOutput(err)
+#     def test_all_options_given(self):
+#         args = ['test', '--settings=test_project.settings', '--option_a=bar',
+#                 '--option_b=foo', '--option_c=31337']
+#         out, err = self.run_django_admin(args)
+#         self.assertNoOutput(err)
+#         self.assertOutput(out, 'bar:foo:31337')
 
 
-class ModulesTestsPackages(unittest.TestCase):
-    def test_get_tests(self):
-        "Check that the get_tests helper function can find tests in a directory"
-        module = import_module(TEST_APP_OK)
-        tests = get_tests(module)
-        self.assertIsInstance(tests, type(module))
+# class Ticket17477RegressionTests(AdminScriptTestCase):
+#     def setUp(self):
+#         self.write_settings('settings.py')
 
-    def test_import_error(self):
-        "Test for #12658 - Tests with ImportError's shouldn't fail silently"
-        module = import_module(TEST_APP_ERROR)
-        self.assertRaises(ImportError, get_tests, module)
+#     def tearDown(self):
+#         self.remove_settings('settings.py')
+
+#     def test_ticket_17477(self):
+#         """'manage.py help test' works after r16352."""
+#         args = ['help', 'test']
+#         out, err = self.run_manage(args)
+#         self.assertNoOutput(err)
 
 
-class Sqlite3InMemoryTestDbs(unittest.TestCase):
+# class ModulesTestsPackages(IgnorePendingDeprecationWarningsMixin, unittest.TestCase):
+#     def test_get_tests(self):
+#         "Check that the get_tests helper function can find tests in a directory"
+#         from django.test.simple import get_tests
+#         module = import_module(TEST_APP_OK)
+#         tests = get_tests(module)
+#         self.assertIsInstance(tests, type(module))
+
+#     def test_import_error(self):
+#         "Test for #12658 - Tests with ImportError's shouldn't fail silently"
+#         from django.test.simple import get_tests
+#         module = import_module(TEST_APP_ERROR)
+#         self.assertRaises(ImportError, get_tests, module)
+
+
+class Sqlite3InMemoryTestDbs(TestCase):
+
+    available_apps = []
 
     @unittest.skipUnless(all(db.connections[conn].vendor == 'sqlite' for conn in db.connections),
-                         "This is a sqlite-specific issue")
+                         "This is an sqlite-specific issue")
     def test_transaction_support(self):
         """Ticket #16329: sqlite3 in-memory test databases"""
         old_db_connections = db.connections
@@ -257,7 +262,7 @@ class Sqlite3InMemoryTestDbs(unittest.TestCase):
                     },
                 })
                 other = db.connections['other']
-                DjangoTestSuiteRunner(verbosity=0).setup_databases()
+                runner.DiscoverRunner(verbosity=0).setup_databases()
                 msg = "DATABASES setting '%s' option set to sqlite3's ':memory:' value shouldn't interfere with transaction support detection." % option
                 # Transaction support should be properly initialised for the 'other' DB
                 self.assertTrue(other.features.supports_transactions, msg)
@@ -272,12 +277,12 @@ class DummyBackendTest(unittest.TestCase):
         """
         Test that setup_databases() doesn't fail with dummy database backend.
         """
-        runner = DjangoTestSuiteRunner(verbosity=0)
+        runner_instance = runner.DiscoverRunner(verbosity=0)
         old_db_connections = db.connections
         try:
             db.connections = db.ConnectionHandler({})
-            old_config = runner.setup_databases()
-            runner.teardown_databases(old_config)
+            old_config = runner_instance.setup_databases()
+            runner_instance.teardown_databases(old_config)
         except Exception as e:
             self.fail("setup_databases/teardown_databases unexpectedly raised "
                       "an error: %s" % e)
@@ -290,7 +295,7 @@ class AliasedDefaultTestSetupTest(unittest.TestCase):
         """
         Test that setup_datebases() doesn't fail when 'default' is aliased
         """
-        runner = DjangoTestSuiteRunner(verbosity=0)
+        runner_instance = runner.DiscoverRunner(verbosity=0)
         old_db_connections = db.connections
         try:
             db.connections = db.ConnectionHandler({
@@ -301,8 +306,8 @@ class AliasedDefaultTestSetupTest(unittest.TestCase):
                     'NAME': 'dummy'
                 }
             })
-            old_config = runner.setup_databases()
-            runner.teardown_databases(old_config)
+            old_config = runner_instance.setup_databases()
+            runner_instance.teardown_databases(old_config)
         except Exception as e:
             self.fail("setup_databases/teardown_databases unexpectedly raised "
                       "an error: %s" % e)
@@ -310,11 +315,11 @@ class AliasedDefaultTestSetupTest(unittest.TestCase):
             db.connections = old_db_connections
 
 
-class AliasedDatabaseTest(unittest.TestCase):
+class AliasedDatabaseTeardownTest(unittest.TestCase):
     def test_setup_aliased_databases(self):
         from django.db.backends.dummy.base import DatabaseCreation
 
-        runner = DjangoTestSuiteRunner(verbosity=0)
+        runner_instance = runner.DiscoverRunner(verbosity=0)
         old_db_connections = db.connections
         old_destroy_test_db = DatabaseCreation.destroy_test_db
         old_create_test_db = DatabaseCreation.create_test_db
@@ -334,8 +339,8 @@ class AliasedDatabaseTest(unittest.TestCase):
                 }
             })
 
-            old_config = runner.setup_databases()
-            runner.teardown_databases(old_config)
+            old_config = runner_instance.setup_databases()
+            runner_instance.teardown_databases(old_config)
 
             self.assertEqual(destroyed_names.count('dbname'), 1)
         finally:
@@ -344,29 +349,29 @@ class AliasedDatabaseTest(unittest.TestCase):
             db.connections = old_db_connections
 
 
-class DeprecationDisplayTest(AdminScriptTestCase):
-    # tests for 19546
-    def setUp(self):
-        settings = {
-            'DATABASES': '{"default": {"ENGINE":"django.db.backends.sqlite3", "NAME":":memory:"}}'
-            }
-        self.write_settings('settings.py', sdict=settings)
+# class DeprecationDisplayTest(AdminScriptTestCase):
+#     # tests for 19546
+#     def setUp(self):
+#         settings = {
+#             'DATABASES': '{"default": {"ENGINE":"django.db.backends.sqlite3", "NAME":":memory:"}}'
+#             }
+#         self.write_settings('settings.py', sdict=settings)
 
-    def tearDown(self):
-        self.remove_settings('settings.py')
+#     def tearDown(self):
+#         self.remove_settings('settings.py')
 
-    def test_runner_deprecation_verbosity_default(self):
-        args = ['test', '--settings=regressiontests.settings', 'test_runner_deprecation_app']
-        out, err = self.run_django_admin(args)
-        self.assertIn("DeprecationWarning: warning from test", err)
-        self.assertIn("DeprecationWarning: module-level warning from deprecation_app", err)
+#     def test_runner_deprecation_verbosity_default(self):
+#         args = ['test', '--settings=test_project.settings', 'test_runner_deprecation_app']
+#         out, err = self.run_django_admin(args)
+#         self.assertIn("DeprecationWarning: warning from test", err)
+#         self.assertIn("DeprecationWarning: module-level warning from deprecation_app", err)
 
-    @unittest.skipIf(sys.version_info[:2] == (2, 6),
-        "On Python 2.6, DeprecationWarnings are visible anyway")
-    def test_runner_deprecation_verbosity_zero(self):
-        args = ['test', '--settings=regressiontests.settings', '--verbosity=0']
-        out, err = self.run_django_admin(args)
-        self.assertFalse("DeprecationWarning: warning from test" in err)
+#     @unittest.skipIf(sys.version_info[:2] == (2, 6),
+#         "On Python 2.6, DeprecationWarnings are visible anyway")
+#     def test_runner_deprecation_verbosity_zero(self):
+#         args = ['test', '--settings=settings', '--verbosity=0']
+#         out, err = self.run_django_admin(args)
+#         self.assertFalse("DeprecationWarning: warning from test" in err)
 
 
 class AutoIncrementResetTest(TransactionTestCase):
@@ -375,6 +380,8 @@ class AutoIncrementResetTest(TransactionTestCase):
     and check that both times they get "1" as their PK value. That is, we test
     that AutoField values start from 1 for each transactional test case.
     """
+
+    available_apps = ['test_runner']
 
     reset_sequences = True
 

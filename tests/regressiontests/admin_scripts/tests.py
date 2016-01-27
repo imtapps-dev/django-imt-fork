@@ -19,9 +19,9 @@ from django import conf, get_version
 from django.conf import settings
 from django.core.management import BaseCommand
 from django.db import connection
-from django.test.simple import DjangoTestSuiteRunner
+from django.test.runner import DiscoverRunner
 from django.utils import unittest
-from django.utils.encoding import force_str, force_text
+from django.utils.encoding import force_text
 from django.utils._os import upath
 from django.utils.six import StringIO
 from django.test import LiveServerTestCase
@@ -1080,7 +1080,7 @@ class ManageValidate(AdminScriptTestCase):
         self.assertOutput(out, '0 errors found')
 
 
-class CustomTestRunner(DjangoTestSuiteRunner):
+class CustomTestRunner(DiscoverRunner):
 
     def __init__(self, *args, **kwargs):
         assert 'liveserver' not in kwargs
