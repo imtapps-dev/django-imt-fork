@@ -26,6 +26,9 @@ class Command(BaseCommand):
             help='Overrides the default address where the live server (used '
                  'with LiveServerTestCase) is expected to run from. The '
                  'default value is localhost:8081-8179.'),
+        make_option('--parallel',
+            action='store', dest='parallel', default=0,
+            help='Tells Django test runner how many processes to start.')
     )
     help = ('Runs the test suite for the specified applications, or the '
             'entire site if no apps are specified.')
@@ -80,6 +83,7 @@ class Command(BaseCommand):
 
         TestRunner = get_runner(settings, options.get('testrunner'))
         options['verbosity'] = int(options.get('verbosity'))
+        options['parallel'] = int(options.get('parallel'))
 
         if options.get('liveserver') is not None:
             os.environ['DJANGO_LIVE_TEST_SERVER_ADDRESS'] = options['liveserver']
