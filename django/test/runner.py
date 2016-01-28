@@ -258,6 +258,8 @@ class ParallelTestSuite(unittest.TestSuite):
             except StopIteration:
                 pool.close()
                 break
+            except Exception as e:
+                print e
 
             tests = list(self.subsuites[subsuite_index])
             for event in events:
