@@ -7,6 +7,8 @@ from django.core.exceptions import ImproperlyConfigured
 from django.utils.importlib import import_module
 from django.utils._os import upath
 from django.utils import six
+from django.utils.functional import cached_property
+from django.utils.module_loading import import_string
 
 
 DEFAULT_DB_ALIAS = 'default'
@@ -53,16 +55,31 @@ class ConnectionDoesNotExist(Exception):
 
 
 class ConnectionHandler(object):
-    def __init__(self, databases):
-        if not databases:
-            self.databases = {
+
+    def __init__(self, databases=None):
+        """
+        databases is an optional dictionary of database definitions (structured
+        like settings.DATABASES).
+        """
+        self._databases = databases
+        self._connections = local()
+
+    @cached_property
+    def databases(self):
+        if self._databases is None:
+            self._databases = settings.DATABASES
+        if self._databases == {}:
+            self._databases = {
                 DEFAULT_DB_ALIAS: {
                     'ENGINE': 'django.db.backends.dummy',
                 },
             }
-        else:
-            self.databases = databases
-        self._connections = local()
+        if self._databases[DEFAULT_DB_ALIAS] == {}:
+            self._databases[DEFAULT_DB_ALIAS]['ENGINE'] = 'django.db.backends.dummy'
+
+        if DEFAULT_DB_ALIAS not in self._databases:
+            raise ImproperlyConfigured("You must define a '%s' database" % DEFAULT_DB_ALIAS)
+        return self._databases
 
     def ensure_defaults(self, alias):
         """
@@ -106,24 +123,24 @@ class ConnectionHandler(object):
 
 
 class ConnectionRouter(object):
-    def __init__(self, routers):
-        self.routers = []
-        for r in routers:
+    def __init__(self, routers=None):
+        """
+        If routers is not specified, will default to settings.DATABASE_ROUTERS.
+        """
+        self._routers = routers
+
+    @cached_property
+    def routers(self):
+        if self._routers is None:
+            self._routers = settings.DATABASE_ROUTERS
+        routers = []
+        for r in self._routers:
             if isinstance(r, six.string_types):
-                try:
-                    module_name, klass_name = r.rsplit('.', 1)
-                    module = import_module(module_name)
-                except ImportError as e:
-                    raise ImproperlyConfigured('Error importing database router %s: "%s"' % (klass_name, e))
-                try:
-                    router_class = getattr(module, klass_name)
-                except AttributeError:
-                    raise ImproperlyConfigured('Module "%s" does not define a database router name "%s"' % (module, klass_name))
-                else:
-                    router = router_class()
+                router = import_string(r)()
             else:
                 router = r
-            self.routers.append(router)
+            routers.append(router)
+        return routers
 
     def _router_func(action):
         def _route_db(self, model, **hints):

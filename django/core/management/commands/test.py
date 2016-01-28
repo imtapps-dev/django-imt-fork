@@ -25,7 +25,7 @@ class Command(BaseCommand):
             action='store', dest='liveserver', default=None,
             help='Overrides the default address where the live server (used '
                  'with LiveServerTestCase) is expected to run from. The '
-                 'default value is localhost:8081.'),
+                 'default value is localhost:8081-8179.'),
     )
     help = ('Runs the test suite for the specified applications, or the '
             'entire site if no apps are specified.')

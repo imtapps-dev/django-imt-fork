@@ -1,12 +1,18 @@
 #!/usr/bin/env python
+import atexit
 import logging
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+from argparse import ArgumentParser
 
+import django
 from django import contrib
+from django.conf import settings
+from django.db import connection, connections
+from django.test.runner import default_test_processes
 from django.utils._os import upath
 from django.utils import six
 
@@ -19,6 +25,11 @@ CONTRIB_DIR = os.path.dirname(upath(contrib.__file__))
 
 TEMP_DIR = tempfile.mkdtemp(prefix='django_')
 os.environ['DJANGO_TEST_TEMP_DIR'] = TEMP_DIR
+
+# Removing the temporary TMPDIR. Ensure we pass in unicode so that it will
+# successfully remove temp trees containing non-ASCII filenames on Windows.
+# (We're assuming the temp dir name itself only contains ASCII characters.)
+atexit.register(shutil.rmtree, six.text_type(TEMP_DIR))
 
 SUBDIRS_TO_SKIP = [
     'templates',
@@ -63,13 +74,13 @@ def get_test_modules():
             modules.append((modpath, f))
     return modules
 
+
 def get_installed():
     from django.db.models.loading import get_apps
     return [app.__name__.rsplit('.', 1)[0] for app in get_apps()]
 
 
-def setup(verbosity, test_labels):
-    from django.conf import settings
+def setup(verbosity, test_labels, parallel):
     from django.db.models.loading import get_apps, load_app
     state = {
         'INSTALLED_APPS': settings.INSTALLED_APPS,
@@ -96,6 +107,12 @@ def setup(verbosity, test_labels):
         logger = logging.getLogger('py.warnings')
         handler = logging.StreamHandler()
         logger.addHandler(handler)
+
+    if verbosity >= 1:
+        msg = "Testing against Django installed in '%s'" % os.path.dirname(django.__file__)
+        if parallel > 1:
+            msg += " with %d processes" % parallel
+        print(msg)
 
     # Load all the ALWAYS_INSTALLED_APPS.
     get_apps()
@@ -149,20 +166,36 @@ def setup(verbosity, test_labels):
 
     return state
 
+
 def teardown(state):
     from django.conf import settings
     # Removing the temporary TEMP_DIR. Ensure we pass in unicode
     # so that it will successfully remove temp trees containing
     # non-ASCII filenames on Windows. (We're assuming the temp dir
     # name itself does not contain non-ASCII characters.)
-    shutil.rmtree(six.text_type(TEMP_DIR))
+    # shutil.rmtree(six.text_type(TEMP_DIR))
     # Restore the old settings.
     for key, value in state.items():
         setattr(settings, key, value)
 
-def django_tests(verbosity, interactive, failfast, test_labels):
-    from django.conf import settings
-    state = setup(verbosity, test_labels)
+
+def actual_test_processes(parallel):
+    if parallel == 0:
+        # On Python 3.4+: if multiprocessing.get_start_method() != 'fork':
+        if not hasattr(os, 'fork'):
+            return 1
+        # This doesn't work before django.setup() on some databases.
+        elif all(conn.features.can_clone_databases for conn in connections.all()):
+            return default_test_processes()
+        else:
+            return 1
+    else:
+        return parallel
+
+
+# +def django_tests(verbosity, interactive, failfast, keepdb, reverse, test_labels, debug_sql, parallel):
+def django_tests(verbosity, interactive, failfast, test_labels, parallel):
+    state = setup(verbosity, test_labels, parallel)
     extra_tests = []
 
     # Run the test suite, including the extra validation tests.
@@ -172,6 +205,7 @@ def django_tests(verbosity, interactive, failfast, test_labels):
         verbosity=verbosity,
         interactive=interactive,
         failfast=failfast,
+        parallel=actual_test_processes(parallel),
     )
     failures = test_runner.run_tests(
         test_labels or get_installed(), extra_tests=extra_tests)
@@ -237,6 +271,7 @@ def bisect_tests(bisection_label, options, test_labels):
         print("***** Source of error: %s" % test_labels[0])
     teardown(state)
 
+
 def paired_tests(paired_test, options, test_labels):
     state = setup(int(options.verbosity), test_labels)
 
@@ -273,50 +308,72 @@ def paired_tests(paired_test, options, test_labels):
     teardown(state)
 
 if __name__ == "__main__":
-    from optparse import OptionParser
-    usage = "%prog [options] [module module module ...]"
-    parser = OptionParser(usage=usage)
-    parser.add_option(
-        '-v', '--verbosity', action='store', dest='verbosity', default='1',
-        type='choice', choices=['0', '1', '2', '3'],
-        help='Verbosity level; 0=minimal output, 1=normal output, 2=all '
-             'output')
-    parser.add_option(
+    parser = ArgumentParser(description="Run the Django test suite.")
+    parser.add_argument('modules', nargs='*', metavar='module',
+        help='Optional path(s) to test modules; e.g. "i18n" or '
+             '"i18n.tests.TranslationTests.test_lazy_objects".')
+    parser.add_argument(
+        '-v', '--verbosity', default=1, type=int, choices=[0, 1, 2, 3],
+        help='Verbosity level; 0=minimal output, 1=normal output, 2=all output')
+    parser.add_argument(
         '--noinput', action='store_false', dest='interactive', default=True,
         help='Tells Django to NOT prompt the user for input of any kind.')
-    parser.add_option(
+    parser.add_argument(
         '--failfast', action='store_true', dest='failfast', default=False,
         help='Tells Django to stop running the test suite after first failed '
              'test.')
-    parser.add_option(
+    parser.add_argument(
+        '-k', '--keepdb', action='store_true', dest='keepdb', default=False,
+        help='Tells Django to preserve the test database between runs.')
+    parser.add_argument(
         '--settings',
         help='Python path to settings module, e.g. "myproject.settings". If '
-             'this isn\'t provided, the DJANGO_SETTINGS_MODULE environment '
-             'variable will be used.')
-    parser.add_option(
-        '--bisect', action='store', dest='bisect', default=None,
+             'this isn\'t provided, either the DJANGO_SETTINGS_MODULE '
+             'environment variable or "test_sqlite" will be used.')
+    parser.add_argument('--bisect',
         help='Bisect the test suite to discover a test that causes a test '
              'failure when combined with the named test.')
-    parser.add_option(
-        '--pair', action='store', dest='pair', default=None,
+    parser.add_argument('--pair',
         help='Run the test suite in pairs with the named test to find problem '
              'pairs.')
-    parser.add_option(
-        '--liveserver', action='store', dest='liveserver', default=None,
+    parser.add_argument('--reverse', action='store_true', default=False,
+        help='Sort test suites and test cases in opposite order to debug '
+             'test side effects not apparent with normal execution lineup.')
+    parser.add_argument('--liveserver',
         help='Overrides the default address where the live server (used with '
              'LiveServerTestCase) is expected to run from. The default value '
-             'is localhost:8081.')
-    parser.add_option(
-        '--selenium', action='store_true', dest='selenium',
-        default=False,
-        help='Run the Selenium tests as well (if Selenium is installed)')
-    options, args = parser.parse_args()
+             'is localhost:8081-8179.')
+    parser.add_argument(
+        '--selenium', action='store_true', dest='selenium', default=False,
+        help='Run the Selenium tests as well (if Selenium is installed).')
+    parser.add_argument(
+        '--debug-sql', action='store_true', dest='debug_sql', default=False,
+        help='Turn on the SQL query logger within tests.')
+    parser.add_argument(
+        '--parallel', dest='parallel', nargs='?', default=0, type=int,
+        const=default_test_processes(),
+        help='Run tests in parallel processes.')
+
+    options = parser.parse_args()
+
+    # mock is a required dependency
+    # try:
+    #     from django.test import mock  # NOQA
+    # except ImportError:
+    #     print(
+    #         "Please install test dependencies first: \n"
+    #         "$ pip install -r requirements/py%s.txt" % sys.version_info.major
+    #     )
+    #     sys.exit(1)
+
+    # Allow including a trailing slash on app_labels for tab completion convenience
+    options.modules = [os.path.normpath(labels) for labels in options.modules]
+
     if options.settings:
         os.environ['DJANGO_SETTINGS_MODULE'] = options.settings
-    elif "DJANGO_SETTINGS_MODULE" not in os.environ:
-        parser.error("DJANGO_SETTINGS_MODULE is not set in the environment. "
-                      "Set it or use --settings.")
     else:
+        if "DJANGO_SETTINGS_MODULE" not in os.environ:
+            os.environ['DJANGO_SETTINGS_MODULE'] = 'test_sqlite'
         options.settings = os.environ['DJANGO_SETTINGS_MODULE']
 
     if options.liveserver is not None:
@@ -326,11 +383,44 @@ if __name__ == "__main__":
         os.environ['DJANGO_SELENIUM_TESTS'] = '1'
 
     if options.bisect:
-        bisect_tests(options.bisect, options, args)
+        bisect_tests(options.bisect, options, options.modules)
     elif options.pair:
-        paired_tests(options.pair, options, args)
+        paired_tests(options.pair, options, options.modules)
     else:
         failures = django_tests(int(options.verbosity), options.interactive,
-                                options.failfast, args)
+                                options.failfast, options.modules, options.parallel)
+        # failures = django_tests(options.verbosity, options.interactive,
+                                # options.failfast, options.keepdb,
+                                # options.reverse, options.modules,
+                                # options.debug_sql, options.parallel)
         if failures:
             sys.exit(bool(failures))
+
+
+
+
+
+
+#     if options.settings:
+#         os.environ['DJANGO_SETTINGS_MODULE'] = options.settings
+#     elif "DJANGO_SETTINGS_MODULE" not in os.environ:
+#         parser.error("DJANGO_SETTINGS_MODULE is not set in the environment. "
+#                       "Set it or use --settings.")
+#     else:
+#         options.settings = os.environ['DJANGO_SETTINGS_MODULE']
+
+#     if options.liveserver is not None:
+#         os.environ['DJANGO_LIVE_TEST_SERVER_ADDRESS'] = options.liveserver
+
+#     if options.selenium:
+#         os.environ['DJANGO_SELENIUM_TESTS'] = '1'
+
+#     if options.bisect:
+#         bisect_tests(options.bisect, options, args)
+#     elif options.pair:
+#         paired_tests(options.pair, options, args)
+#     else:
+#         failures = django_tests(int(options.verbosity), options.interactive,
+#                                 options.failfast, options.parallel, args)
+#         if failures:
+#             sys.exit(bool(failures))

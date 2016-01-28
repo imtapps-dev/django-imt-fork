@@ -1,6 +1,4 @@
-from django.conf import settings
 from django.core import signals
-from django.core.exceptions import ImproperlyConfigured
 from django.db.utils import (ConnectionHandler, ConnectionRouter,
     load_backend, DEFAULT_DB_ALIAS, DatabaseError, IntegrityError)
 
@@ -8,12 +6,12 @@ __all__ = ('backend', 'connection', 'connections', 'router', 'DatabaseError',
     'IntegrityError', 'DEFAULT_DB_ALIAS')
 
 
-if settings.DATABASES and DEFAULT_DB_ALIAS not in settings.DATABASES:
-    raise ImproperlyConfigured("You must define a '%s' database" % DEFAULT_DB_ALIAS)
+# if settings.DATABASES and DEFAULT_DB_ALIAS not in settings.DATABASES:
+#     raise ImproperlyConfigured("You must define a '%s' database" % DEFAULT_DB_ALIAS)
 
-connections = ConnectionHandler(settings.DATABASES)
+connections = ConnectionHandler()
 
-router = ConnectionRouter(settings.DATABASE_ROUTERS)
+router = ConnectionRouter()
 
 # `connection`, `DatabaseError` and `IntegrityError` are convenient aliases
 # for backend bits.

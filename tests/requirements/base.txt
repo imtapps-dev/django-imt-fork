@@ -4,3 +4,4 @@ numpy
 PyYAML
 pytz
 selenium
+tblib

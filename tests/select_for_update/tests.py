@@ -34,8 +34,9 @@ class SelectForUpdateTests(TransactionTestCase):
 
         # We need another database connection to test that one connection
         # issuing a SELECT ... FOR UPDATE will block.
-        new_connections = ConnectionHandler(settings.DATABASES)
-        self.new_connection = new_connections[DEFAULT_DB_ALIAS]
+        # new_connections = ConnectionHandler(settings.DATABASES)
+        # self.new_connection = new_connections[DEFAULT_DB_ALIAS]
+        self.new_connection = connection.copy()
         self.new_connection.enter_transaction_management()
         self.new_connection.managed(True)
 

@@ -1,3 +1,5 @@
+import copy
+
 from django.db.utils import DatabaseError
 
 try:
@@ -14,6 +16,7 @@ from django.utils.functional import cached_property
 from django.utils.importlib import import_module
 from django.utils import six
 from django.utils.timezone import is_aware
+from django.utils.encoding import force_text
 
 
 class BaseDatabaseWrapper(object):
@@ -329,6 +332,20 @@ class BaseDatabaseWrapper(object):
     def make_debug_cursor(self, cursor):
         return util.CursorDebugWrapper(cursor, self)
 
+    def is_in_memory_db(self, name):
+        return name == ":memory:" or "mode=memory" in force_text(name)
+
+    def copy(self, alias=None, allow_thread_sharing=None):
+        """
+        Return a copy of this connection.
+        For tests that require two connections to the same database.
+        """
+        settings_dict = copy.deepcopy(self.settings_dict)
+        if alias is None:
+            alias = self.alias
+        if allow_thread_sharing is None:
+            allow_thread_sharing = self.allow_thread_sharing
+        return type(self)(settings_dict, alias, allow_thread_sharing)
 
 class BaseDatabaseFeatures(object):
     allows_group_by_pk = False
@@ -428,6 +445,10 @@ class BaseDatabaseFeatures(object):
 
     # Support for the DISTINCT ON clause
     can_distinct_on_fields = False
+
+    # Can the backend clone databases for parallel test execution?
+    # Defaults to False to allow third-party backends to opt-in.
+    can_clone_databases = False
 
     def __init__(self, connection):
         self.connection = connection

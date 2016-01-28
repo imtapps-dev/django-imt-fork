@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import datetime
 
 from django.conf import settings
-from django.db import backend, transaction, DEFAULT_DB_ALIAS, models
+from django.db import backend, transaction, DEFAULT_DB_ALIAS, models, connection
 from django.test import TestCase, TransactionTestCase, skipUnlessDBFeature
 
 from .models import (Book, Award, AwardNote, Person, Child, Toy, PlayedWith,
@@ -14,19 +14,21 @@ from .models import (Book, Award, AwardNote, Person, Child, Toy, PlayedWith,
 
 # Can't run this test under SQLite, because you can't
 # get two connections to an in-memory database.
+@skipUnlessDBFeature('test_db_allows_multiple_connections')
 class DeleteLockingTest(TransactionTestCase):
     def setUp(self):
         # Create a second connection to the default database
-        conn_settings = settings.DATABASES[DEFAULT_DB_ALIAS]
-        self.conn2 = backend.DatabaseWrapper({
-            'HOST': conn_settings['HOST'],
-            'NAME': conn_settings['NAME'],
-            'OPTIONS': conn_settings['OPTIONS'],
-            'PASSWORD': conn_settings['PASSWORD'],
-            'PORT': conn_settings['PORT'],
-            'USER': conn_settings['USER'],
-            'TIME_ZONE': settings.TIME_ZONE,
-        })
+        self.conn2 = connection.copy()
+        # conn_settings = settings.DATABASES[DEFAULT_DB_ALIAS]
+        # self.conn2 = backend.DatabaseWrapper({
+        #     'HOST': conn_settings['HOST'],
+        #     'NAME': conn_settings['NAME'],
+        #     'OPTIONS': conn_settings['OPTIONS'],
+        #     'PASSWORD': conn_settings['PASSWORD'],
+        #     'PORT': conn_settings['PORT'],
+        #     'USER': conn_settings['USER'],
+        #     'TIME_ZONE': settings.TIME_ZONE,
+        # })
 
         # Put both DB connections into managed transaction mode
         transaction.enter_transaction_management()
@@ -36,9 +38,9 @@ class DeleteLockingTest(TransactionTestCase):
     def tearDown(self):
         # Close down the second connection.
         transaction.leave_transaction_management()
+        self.conn2.rollback()
         self.conn2.close()
 
-    @skipUnlessDBFeature('test_db_allows_multiple_connections')
     def test_concurrent_delete(self):
         "Deletes on concurrent transactions don't collide and lock the database. Regression for #9479"
 
@@ -341,7 +343,7 @@ class Ticket19102Tests(TestCase):
             ).select_related('orgunit').delete()
         self.assertFalse(Login.objects.filter(pk=self.l1.pk).exists())
         self.assertTrue(Login.objects.filter(pk=self.l2.pk).exists())
-    
+
     @skipUnlessDBFeature("update_can_self_select")
     def test_ticket_19102_defer(self):
         with self.assertNumQueries(1):
