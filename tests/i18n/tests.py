@@ -644,8 +644,8 @@ class FormattingTests(TestCase):
         with translation.override('de-at', deactivate=True):
             de_format_mod = import_module('django.conf.locale.de.formats')
             self.assertEqual(list(iter_format_modules('de')), [de_format_mod])
-            with self.settings(FORMAT_MODULE_PATH='regressiontests.i18n.other.locale'):
-                test_de_format_mod = import_module('regressiontests.i18n.other.locale.de.formats')
+            with self.settings(FORMAT_MODULE_PATH='i18n.other.locale'):
+                test_de_format_mod = import_module('i18n.other.locale.de.formats')
                 self.assertEqual(list(iter_format_modules('de')), [test_de_format_mod, de_format_mod])
 
     def test_iter_format_modules_stability(self):
@@ -665,7 +665,7 @@ class FormattingTests(TestCase):
 
     def test_get_format_modules_stability(self):
         with self.settings(USE_L10N=True,
-                FORMAT_MODULE_PATH='regressiontests.i18n.other.locale'):
+                FORMAT_MODULE_PATH='i18n.other.locale'):
             with translation.override('de', deactivate=True):
                 old = str("%r") % get_format_modules(reverse=True)
                 new = str("%r") % get_format_modules(reverse=True) # second try
@@ -860,7 +860,7 @@ class AppResolutionOrderI18NTests(ResolutionOrderI18NTests):
 
     def setUp(self):
         self.old_installed_apps = settings.INSTALLED_APPS
-        settings.INSTALLED_APPS = ['regressiontests.i18n.resolution'] + list(settings.INSTALLED_APPS)
+        settings.INSTALLED_APPS = ['i18n.resolution'] + list(settings.INSTALLED_APPS)
         super(AppResolutionOrderI18NTests, self).setUp()
 
     def tearDown(self):
@@ -877,7 +877,7 @@ class LocalePathsResolutionOrderI18NTests(ResolutionOrderI18NTests):
         self.assertUgettext('Time', 'LOCALE_PATHS')
 
     def test_locale_paths_override_app_translation(self):
-        extended_apps = list(settings.INSTALLED_APPS) + ['regressiontests.i18n.resolution']
+        extended_apps = list(settings.INSTALLED_APPS) + ['i18n.resolution']
         with self.settings(INSTALLED_APPS=extended_apps):
             self.assertUgettext('Time', 'LOCALE_PATHS')
 

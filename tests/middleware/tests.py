@@ -160,7 +160,7 @@ class CommonMiddlewareTest(TestCase):
       """
       settings.APPEND_SLASH = True
       request = self._get_request('customurlconf/slash/')
-      request.urlconf = 'regressiontests.middleware.extra_urls'
+      request.urlconf = 'middleware.extra_urls'
       self.assertEqual(CommonMiddleware().process_request(request), None)
 
     def test_append_slash_slashless_resource_custom_urlconf(self):
@@ -169,7 +169,7 @@ class CommonMiddlewareTest(TestCase):
       """
       settings.APPEND_SLASH = True
       request = self._get_request('customurlconf/noslash')
-      request.urlconf = 'regressiontests.middleware.extra_urls'
+      request.urlconf = 'middleware.extra_urls'
       self.assertEqual(CommonMiddleware().process_request(request), None)
 
     def test_append_slash_slashless_unknown_custom_urlconf(self):
@@ -178,7 +178,7 @@ class CommonMiddlewareTest(TestCase):
       """
       settings.APPEND_SLASH = True
       request = self._get_request('customurlconf/unknown')
-      request.urlconf = 'regressiontests.middleware.extra_urls'
+      request.urlconf = 'middleware.extra_urls'
       self.assertEqual(CommonMiddleware().process_request(request), None)
 
     def test_append_slash_redirect_custom_urlconf(self):
@@ -187,7 +187,7 @@ class CommonMiddlewareTest(TestCase):
       """
       settings.APPEND_SLASH = True
       request = self._get_request('customurlconf/slash')
-      request.urlconf = 'regressiontests.middleware.extra_urls'
+      request.urlconf = 'middleware.extra_urls'
       r = CommonMiddleware().process_request(request)
       self.assertFalse(r is None,
           "CommonMiddlware failed to return APPEND_SLASH redirect using request.urlconf")
@@ -203,7 +203,7 @@ class CommonMiddlewareTest(TestCase):
       settings.APPEND_SLASH = True
       settings.DEBUG = True
       request = self._get_request('customurlconf/slash')
-      request.urlconf = 'regressiontests.middleware.extra_urls'
+      request.urlconf = 'middleware.extra_urls'
       request.method = 'POST'
       self.assertRaises(
           RuntimeError,
@@ -221,7 +221,7 @@ class CommonMiddlewareTest(TestCase):
       """
       settings.APPEND_SLASH = False
       request = self._get_request('customurlconf/slash')
-      request.urlconf = 'regressiontests.middleware.extra_urls'
+      request.urlconf = 'middleware.extra_urls'
       self.assertEqual(CommonMiddleware().process_request(request), None)
 
     def test_append_slash_quoted_custom_urlconf(self):
@@ -231,7 +231,7 @@ class CommonMiddlewareTest(TestCase):
       """
       settings.APPEND_SLASH = True
       request = self._get_request('customurlconf/needsquoting#')
-      request.urlconf = 'regressiontests.middleware.extra_urls'
+      request.urlconf = 'middleware.extra_urls'
       r = CommonMiddleware().process_request(request)
       self.assertFalse(r is None,
           "CommonMiddlware failed to return APPEND_SLASH redirect using request.urlconf")
@@ -244,7 +244,7 @@ class CommonMiddlewareTest(TestCase):
       settings.PREPEND_WWW = True
       settings.APPEND_SLASH = False
       request = self._get_request('customurlconf/path/')
-      request.urlconf = 'regressiontests.middleware.extra_urls'
+      request.urlconf = 'middleware.extra_urls'
       r = CommonMiddleware().process_request(request)
       self.assertEqual(r.status_code, 301)
       self.assertEqual(
@@ -255,7 +255,7 @@ class CommonMiddlewareTest(TestCase):
       settings.PREPEND_WWW = True
       settings.APPEND_SLASH = True
       request = self._get_request('customurlconf/slash/')
-      request.urlconf = 'regressiontests.middleware.extra_urls'
+      request.urlconf = 'middleware.extra_urls'
       r = CommonMiddleware().process_request(request)
       self.assertEqual(r.status_code, 301)
       self.assertEqual(r['Location'],
@@ -265,7 +265,7 @@ class CommonMiddlewareTest(TestCase):
       settings.PREPEND_WWW = True
       settings.APPEND_SLASH = True
       request = self._get_request('customurlconf/slash')
-      request.urlconf = 'regressiontests.middleware.extra_urls'
+      request.urlconf = 'middleware.extra_urls'
       r = CommonMiddleware().process_request(request)
       self.assertEqual(r.status_code, 301)
       self.assertEqual(r['Location'],
@@ -311,7 +311,7 @@ class CommonMiddlewareTest(TestCase):
 
 
 class ConditionalGetMiddlewareTest(TestCase):
-    urls = 'regressiontests.middleware.cond_get_urls'
+    urls = 'middleware.cond_get_urls'
     def setUp(self):
         self.req = HttpRequest()
         self.req.META = {

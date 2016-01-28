@@ -1102,7 +1102,7 @@ class WidgetTests(TestCase):
 
 
 class LiveWidgetTests(AdminSeleniumWebDriverTestCase):
-    urls = 'regressiontests.forms.urls'
+    urls = 'forms.urls'
 
     def test_textarea_trailing_newlines(self):
         """

@@ -33,7 +33,7 @@ def _make_books(n, base_date):
 
 class ArchiveIndexViewTests(TestCase):
     fixtures = ['generic-views-test-data.json']
-    urls = 'regressiontests.generic_views.urls'
+    urls = 'generic_views.urls'
 
 
     def test_archive_view(self):
@@ -135,7 +135,7 @@ class ArchiveIndexViewTests(TestCase):
 
 class YearArchiveViewTests(TestCase):
     fixtures = ['generic-views-test-data.json']
-    urls = 'regressiontests.generic_views.urls'
+    urls = 'generic_views.urls'
 
     def test_year_view(self):
         res = self.client.get('/dates/books/2008/')
@@ -219,7 +219,7 @@ class YearArchiveViewTests(TestCase):
 
 class MonthArchiveViewTests(TestCase):
     fixtures = ['generic-views-test-data.json']
-    urls = 'regressiontests.generic_views.urls'
+    urls = 'generic_views.urls'
 
     def test_month_view(self):
         res = self.client.get('/dates/books/2008/oct/')
@@ -345,7 +345,7 @@ class MonthArchiveViewTests(TestCase):
 
 class WeekArchiveViewTests(TestCase):
     fixtures = ['generic-views-test-data.json']
-    urls = 'regressiontests.generic_views.urls'
+    urls = 'generic_views.urls'
 
     def test_week_view(self):
         res = self.client.get('/dates/books/2008/week/39/')
@@ -442,7 +442,7 @@ class WeekArchiveViewTests(TestCase):
 
 class DayArchiveViewTests(TestCase):
     fixtures = ['generic-views-test-data.json']
-    urls = 'regressiontests.generic_views.urls'
+    urls = 'generic_views.urls'
 
     def test_day_view(self):
         res = self.client.get('/dates/books/2008/oct/01/')
@@ -560,7 +560,7 @@ class DayArchiveViewTests(TestCase):
 
 class DateDetailViewTests(TestCase):
     fixtures = ['generic-views-test-data.json']
-    urls = 'regressiontests.generic_views.urls'
+    urls = 'generic_views.urls'
 
     def test_date_detail_by_pk(self):
         res = self.client.get('/dates/books/2008/oct/01/1/')
