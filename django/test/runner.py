@@ -254,12 +254,15 @@ class ParallelTestSuite(unittest.TestSuite):
             try:
                 subsuite_index, events = test_results.next(timeout=0.1)
             except multiprocessing.TimeoutError:
+                try:
+                    pool.join()
+                except AssertionError:
+                    pool.terminate()
+                    break
                 continue
             except StopIteration:
                 pool.close()
                 break
-            except Exception as e:
-                print e
 
             tests = list(self.subsuites[subsuite_index])
             for event in events:
@@ -274,6 +277,7 @@ class ParallelTestSuite(unittest.TestSuite):
         pool.join()
 
         return result
+
 
 class DiscoverRunner(object):
     """

@@ -84,6 +84,7 @@ class Command(BaseCommand):
         TestRunner = get_runner(settings, options.get('testrunner'))
         options['verbosity'] = int(options.get('verbosity'))
         options['parallel'] = int(options.get('parallel'))
+        options['pattern'] = '*test?.py'
 
         if options.get('liveserver') is not None:
             os.environ['DJANGO_LIVE_TEST_SERVER_ADDRESS'] = options['liveserver']
